@@ -1,6 +1,8 @@
 import sys
 import requests
 from bs4 import BeautifulSoup
+import db
+from models import Keywords
 
 print('[1] - Importar palabras clave')
 print('[2] - Mostrar palabras clave')
@@ -24,6 +26,22 @@ def load_keywords():
         for l in file:
             keys.append(l)
         return keys
+
+
+def upload_keywords(keywords):
+    """Store new keywords in db."""
+    keys = []
+    try:
+        with open('keywords.txt', 'r') as file:
+            for line in file:
+                line = line.strip()
+                if line.strip() not in keywords:
+                    keys.append(line)
+                    save_in_db(line)
+            print(f"Stored {len(keys)} elements in d.")
+            return keys
+    except Exception as e:
+        print(f"An error appears while keywords has been load. Reason {e}")
 
 
 def show_keywords(action, keywords):
@@ -85,14 +103,40 @@ def check_position(kw):
         return 100
 
 
+def create_db_tables():
+    """Create db tables."""
+    db.Base.metadata.create_all(db.engine)
+
+
+def save_in_db(keyword, position=None):
+    """Save keyword in db."""
+    try:
+        keyword = Keywords(keyword, position)
+        db.session.add(keyword)
+        db.session.commit()
+        print(f"Keyword {keyword} had seen stored.")
+    except Exception as e:
+        print(f"Keyword {keyword} had not seen stored. Reason {e}.")
+
+
+def get_from_db():
+    """Get keywords from db."""
+    kwrd = []
+    keywords = db.session.query(Keywords.keyword).all()
+    for k in keywords:
+        kwrd.append(str(k[0]).strip())
+    return kwrd
+
+
 if __name__ == '__main__':
 
-    keywords = []
+    create_db_tables()
 
     while True:
+        keywords = get_from_db()
         value = read_option()
         if value == '1':
-            keywords = load_keywords()
+            keywords = upload_keywords(keywords)
         elif value == '2' and len(keywords) != 0:
             show_keywords(value, keywords)
         elif value == '3':
